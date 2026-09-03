@@ -1,0 +1,8 @@
+{
+  "name": "@org/student-mfe-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "name": "student-mfe-e2e"
+  }
+}

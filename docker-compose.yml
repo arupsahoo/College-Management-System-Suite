@@ -1,0 +1,302 @@
+version: '3.8'
+
+services:
+  # ==================================
+  # Database
+  # ==================================
+  mysql:
+    image: mysql:8.0
+    container_name: cms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_AUTH:-college_auth}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cms-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================================
+  # API Gateway
+  # ==================================
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./docker/api-gateway.Dockerfile
+    container_name: cms-api-gateway
+    restart: unless-stopped
+    ports:
+      - "${API_GATEWAY_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3000
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:4200}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - STUDENT_SERVICE_URL=http://student-service:3002
+      - TEACHER_SERVICE_URL=http://teacher-service:3003
+      - ADMIN_SERVICE_URL=http://admin-service:3004
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3005
+      - FILE_SERVICE_URL=http://file-service:3006
+      - AUDIT_SERVICE_URL=http://audit-service:3007
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cms-network
+    volumes:
+      - ./uploads:/app/uploads
+
+  # ==================================
+  # Auth Service
+  # ==================================
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./docker/node-service.Dockerfile
+      args:
+        SERVICE_NAME: auth-service
+        SERVICE_PORT: 3001
+    container_name: cms-auth-service
+    restart: unless-stopped
+    ports:
+      - "${AUTH_SERVICE_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3001
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - DB_NAME=${DB_AUTH:-college_auth}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_ACCESS_EXPIRY=${JWT_ACCESS_EXPIRY:-15m}
+      - JWT_REFRESH_EXPIRY=${JWT_REFRESH_EXPIRY:-7d}
+      - MAX_LOGIN_ATTEMPTS=${MAX_LOGIN_ATTEMPTS:-5}
+      - ACCOUNT_LOCKOUT_DURATION=${ACCOUNT_LOCKOUT_DURATION:-900000}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  # ==================================
+  # Student Service
+  # ==================================
+  student-service:
+    build:
+      context: .
+      dockerfile: ./docker/node-service.Dockerfile
+      args:
+        SERVICE_NAME: student-service
+        SERVICE_PORT: 3002
+    container_name: cms-student-service
+    restart: unless-stopped
+    ports:
+      - "${STUDENT_SERVICE_PORT:-3002}:3002"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3002
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - DB_NAME=${DB_STUDENT:-college_student}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  # ==================================
+  # Teacher Service
+  # ==================================
+  teacher-service:
+    build:
+      context: .
+      dockerfile: ./docker/node-service.Dockerfile
+      args:
+        SERVICE_NAME: teacher-service
+        SERVICE_PORT: 3003
+    container_name: cms-teacher-service
+    restart: unless-stopped
+    ports:
+      - "${TEACHER_SERVICE_PORT:-3003}:3003"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3003
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - DB_NAME=${DB_TEACHER:-college_teacher}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  # ==================================
+  # Admin Service
+  # ==================================
+  admin-service:
+    build:
+      context: .
+      dockerfile: ./docker/node-service.Dockerfile
+      args:
+        SERVICE_NAME: admin-service
+        SERVICE_PORT: 3004
+    container_name: cms-admin-service
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_SERVICE_PORT:-3004}:3004"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3004
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - DB_NAME=${DB_ADMIN:-college_admin}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  # ==================================
+  # Notification Service
+  # ==================================
+  notification-service:
+    build:
+      context: .
+      dockerfile: ./docker/node-service.Dockerfile
+      args:
+        SERVICE_NAME: notification-service
+        SERVICE_PORT: 3005
+    container_name: cms-notification-service
+    restart: unless-stopped
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT:-3005}:3005"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3005
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - DB_NAME=${DB_NOTIFICATION:-college_notification}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EMAIL_FROM=${EMAIL_FROM}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  # ==================================
+  # File Service
+  # ==================================
+  file-service:
+    build:
+      context: .
+      dockerfile: ./docker/node-service.Dockerfile
+      args:
+        SERVICE_NAME: file-service
+        SERVICE_PORT: 3006
+    container_name: cms-file-service
+    restart: unless-stopped
+    ports:
+      - "${FILE_SERVICE_PORT:-3006}:3006"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3006
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - DB_NAME=${DB_FILE:-college_file}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - UPLOAD_DIR=/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cms-network
+    volumes:
+      - ./uploads:/app/uploads
+
+  # ==================================
+  # Audit Service
+  # ==================================
+  audit-service:
+    build:
+      context: .
+      dockerfile: ./docker/node-service.Dockerfile
+      args:
+        SERVICE_NAME: audit-service
+        SERVICE_PORT: 3007
+    container_name: cms-audit-service
+    restart: unless-stopped
+    ports:
+      - "${AUDIT_SERVICE_PORT:-3007}:3007"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3007
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - DB_NAME=${DB_AUDIT:-college_audit}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cms-network
+
+  # ==================================
+  # Frontend Applications (Optional - for production)
+  # ==================================
+  college-shell:
+    build:
+      context: .
+      dockerfile: ./docker/college-shell.Dockerfile
+    container_name: cms-college-shell
+    restart: unless-stopped
+    ports:
+      - "${COLLEGE_SHELL_PORT:-4200}:4200"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - API_BASE_URL=http://api-gateway:3000
+    depends_on:
+      - api-gateway
+    networks:
+      - cms-network
+
+networks:
+  cms-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local

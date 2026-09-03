@@ -2,6 +2,43 @@
   "extends": "./tsconfig.base.json",
   "compileOnSave": false,
   "files": [],
-  "references": [],
+  "references": [
+    {
+      "path": "./apps/college-shell-e2e"
+    },
+    {
+      "path": "./apps/student-mfe-e2e"
+    },
+    {
+      "path": "./apps/teacher-mfe-e2e"
+    },
+    {
+      "path": "./apps/admin-mfe-e2e"
+    },
+    {
+      "path": "./services/api-gateway"
+    },
+    {
+      "path": "./services/auth-service"
+    },
+    {
+      "path": "./services/student-service"
+    },
+    {
+      "path": "./services/teacher-service"
+    },
+    {
+      "path": "./services/admin-service"
+    },
+    {
+      "path": "./services/notification-service"
+    },
+    {
+      "path": "./services/file-service"
+    },
+    {
+      "path": "./services/audit-service"
+    }
+  ],
   "compilerOptions": {}
 }
